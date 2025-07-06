@@ -1,0 +1,200 @@
+#include <Arduino.h>
+
+// Define Hall sensor pins
+#define HALL1 A1
+#define HALL2 A2
+#define HALL3 A3
+
+// Define PWM output registers
+#define H3Pwm OCR2B
+#define H2Pwm OCR1B
+#define H1Pwm OCR0B
+
+#define L3Pwm OCR2A
+#define L2Pwm OCR1A
+#define L1Pwm OCR0A
+
+// PWM levels
+#define lowMax 0x00
+#define lowMin 0xFF
+#define highMax 0xFF
+#define highMin 0x00
+
+const uint8_t hallSequenceCW[6]  = {0b001, 0b101, 0b100, 0b110, 0b010, 0b011};
+const uint8_t hallSequenceCCW[6] = {0b010, 0b110, 0b100, 0b101, 0b001, 0b011};
+
+uint8_t pwmVal = 50;
+
+// Khai báo circular buffer
+#define BUFFER_SIZE 10
+volatile uint8_t commBuffer[BUFFER_SIZE];
+volatile uint8_t bufferHead = 0;
+volatile uint8_t bufferTail = 0;
+
+volatile uint8_t hallState = 0;
+volatile uint8_t currentCommStep = 0; // Trạng thái commutation
+
+volatile float motorRPM = 0;
+volatile float lastMotorRPM = -1;
+volatile unsigned long lastTime = 0;
+volatile unsigned long deltaTime = 0;
+
+void setup() {
+  noInterrupts();
+  ADCSRA &= ~((1 << ADPS0) | (1 << ADPS1) | (1 << ADPS2)); // Clear ADC prescaler bits
+  ADCSRA |= (1 << ADPS0) | (1 << ADPS2); // Set ADC prescaler to 32
+
+  // Timer setup
+  TCCR0A = 0; TCCR0B = 0;
+  TCCR0A |= (1 << COM0A1) | (1 << COM0B0) | (1 << COM0B1) | (1 << WGM00);
+  TCCR0B = (1 << CS00);
+
+  TCCR1A = 0; TCCR1B = 0;
+  TCCR1A |= (1 << COM1A1) | (1 << COM1B0) | (1 << COM1B1) | (1 << WGM10);
+  TCCR1B = (1 << CS10);
+
+
+  TCCR2A = 0; TCCR2B = 0;
+  TCCR2A |= (1 << COM2A1) | (1 << COM2B0) | (1 << COM2B1) | (1 << WGM20);
+  TCCR2B = (1 << CS20);
+
+  // Zero duty cycle pwm
+  OCR0A = OCR0B = OCR1A = OCR1B = OCR2A = OCR2B = 0;
+
+  // Set PWM pins and EN(ir2136) as output
+  DDRB |= B00001110;
+  DDRD |= B01101100;
+
+  // Set Hall sensor pins as inputs
+  pinMode(HALL1, INPUT_PULLUP);
+  pinMode(HALL2, INPUT_PULLUP);
+  pinMode(HALL3, INPUT_PULLUP);
+
+  // Enable Pin Change Interrupts on Hall sensors
+  PCICR |= (1 << PCIE1);
+  PCMSK1 |= (1 << PCINT9) | (1 << PCINT10) | (1 << PCINT11);
+
+  interrupts();
+  Serial.begin(9600);
+  digitalWrite(2, HIGH);
+  bldcStartup();
+}
+void bldcStartup() {
+    // Đọc giá trị Hall sensor ban đầu
+    hallState = (digitalRead(HALL1) << 2) | (digitalRead(HALL2) << 1) | digitalRead(HALL3);
+
+    // Nếu Hall sensor không hợp lệ, đặt bước đầu tiên
+    if (hallState == 0) {
+        currentCommStep = 0;
+    } else {
+        // Tìm vị trí của hallstate trong mảng hallSequenceCW
+        for (uint8_t i = 0; i < 6; i++) {
+            if (hallState == hallSequenceCW[i]) {
+                currentCommStep = i;
+                break;
+            }
+        }
+    }
+    
+    Serial.println("Starting BLDC...");
+    Serial.println(currentCommStep);  
+    handleCommutation(currentCommStep, pwmVal);  
+}
+
+// ISR - Ghi dữ liệu vào buffer
+ISR(PCINT1_vect) {
+
+  hallState = (digitalRead(HALL1) << 2) | (digitalRead(HALL2) << 1) | digitalRead(HALL3);
+  switch (hallState) {
+    case 0b001: currentCommStep = 0; break;
+    case 0b101: currentCommStep = 1; break;
+    case 0b100: currentCommStep = 2; break;
+    case 0b110: currentCommStep = 3; break;
+    case 0b010: currentCommStep = 4; break;
+    case 0b011: currentCommStep = 5; break;
+    default:   currentCommStep = 255; break;
+  }
+  // Lưu vào buffer vòng
+  uint8_t nextHead = (bufferHead + 1) % BUFFER_SIZE; // Lưu vị trí hàng đợi tiếp theo
+  if (nextHead != bufferTail) { // Nếu buffer còn trống
+    commBuffer[bufferHead] = currentCommStep; // lưu giá trị vào vị trí hiện tại
+    bufferHead = nextHead; // chuyển sang vị trí hàng đợi tiếp theo
+  }
+}
+
+
+void handleCommutation(uint8_t step, uint8_t pwmVal) {
+    switch (step) {
+        case 0: // Hall sensor = 001
+            H1Pwm = pwmVal;  // High Side H1: PWM
+            L3Pwm = lowMax;  // Low Side L3: ON
+            H2Pwm = highMin; // Tắt H2
+            H3Pwm = highMin; // Tắt H3
+            L1Pwm = lowMin;  // Tắt L1
+            L2Pwm = lowMin;  // Tắt L2
+            break;
+        case 1: // Hall sensor = 101
+            H2Pwm = pwmVal;  // High Side H2: PWM
+            L3Pwm = lowMax;  // Low Side L3: ON
+            H1Pwm = highMin; // Tắt H1
+            H3Pwm = highMin; // Tắt H3
+            L1Pwm = lowMin;  // Tắt L1
+            L2Pwm = lowMin;  // Tắt L2
+            break;
+        case 2: // Hall sensor = 100
+            H2Pwm = pwmVal;  // High Side H2 với PWM
+            L1Pwm = lowMax;  // Low Side L1 ON
+            H1Pwm = highMin; // Tắt H1
+            H3Pwm = highMin; // Tắt H3
+            L2Pwm = lowMin;  // Tắt L2
+            L3Pwm = lowMin;  // Tắt L3
+            break;
+        case 3: // Hall sensor = 110
+            H3Pwm = pwmVal;  // High Side H3 với PWM
+            L1Pwm = lowMax;  // Low Side L1 ON
+            H1Pwm = highMin; // Tắt H1
+            H2Pwm = highMin; // Tắt H2
+            L2Pwm = lowMin;  // Tắt L2
+            L3Pwm = lowMin;  // Tắt L3
+            break;
+        case 4: // Hall sensor = 010
+            H3Pwm = pwmVal;  // High Side H3 với PWM
+            L2Pwm = lowMax;  // Low Side L2 ON
+            H1Pwm = highMin; // Tắt H1
+            H2Pwm = highMin; // Tắt H2
+            L1Pwm = lowMin;  // Tắt L1
+            L3Pwm = lowMin;  // Tắt L3
+          
+            break;
+        case 5: // Hall sensor = 011
+            H1Pwm = pwmVal;  // High Side H1 với PWM
+            L2Pwm = lowMax;  // Low Side L2 ON
+            H2Pwm = highMin; // Tắt H2
+            H3Pwm = highMin; // Tắt H3
+            L1Pwm = lowMin;  // Tắt L1
+            L3Pwm = lowMin;  // Tắt L3
+        
+            break;
+        case 255:
+            // Tắt tất cả các pha khi không xác định
+            H1Pwm = highMin; L1Pwm = lowMin;
+            H2Pwm = highMin; L2Pwm = lowMin;
+            H3Pwm = highMin; L3Pwm = lowMin;
+    }
+}
+
+void loop() {
+    // Đọc dữ liệu từ buffer vòng
+    if (bufferTail != bufferHead) { // Nếu vòng đệm có dữ liệu 
+        uint8_t step = commBuffer[bufferTail]; // đọc giá trị ở vị trí hiện tại
+        bufferTail = (bufferTail + 1) % BUFFER_SIZE; // lưu vị trí hàng đợi tiếp theo
+        Serial.println(step);
+        handleCommutation(step, pwmVal); // xử lý bước comm
+    }
+   
+}
+
+
+
+
+
