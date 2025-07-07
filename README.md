@@ -8,6 +8,10 @@ A simple task manager API using FastAPI.
 - Upload files per task
 - Simple API key auth
 
+## Notes
+
+All function descriptions are written in Vietnamese.
+
 ## Installation
 
 ```bash
