@@ -34,10 +34,7 @@ def get_task(task_id: int, user: FakeUser = Depends(get_current_user)):
         for task in user.tasks:
             if task.task_id == task_id:
                 user_task_cache[api_key][task_id] = task
-            
-                return HTTPException(status_code=200, detail="Task found", data=task)
-            
-                # return task -> khong dung cai format yeu de hien thi o client
+                return task
         raise HTTPException(status_code=404, detail="Task not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Task retrieve failed: {str(e)}")
