@@ -1,11 +1,7 @@
-# Core app
 fastapi==0.110.0
 uvicorn[standard]==0.29.0
 python-multipart==0.0.9
 
-# Dev + CI tools
 flake8==7.0.0
 pytest==8.2.1
-
-# Optional (nếu dùng dotenv cho cấu hình)
-python-dotenv==1.0.1
+httpx==0.27.0
