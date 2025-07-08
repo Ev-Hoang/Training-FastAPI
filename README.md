@@ -50,29 +50,6 @@ The CI triggers on:
 
 ---
 
-## 🏗️ Project Structure
-
-Training-FastAPI/
-├── manage.py # App entry point (FastAPI instance)
-├── auth/
-│ └── init.py # Re-export get_current_user
-├── utils/
-│ └── dependencies.py # get_current_user and shared dependencies
-├── views/
-│ └── tasks/ # Routers and route handlers
-├── tests/
-│ └── test_dummy.py # Pytest-based unit tests
-├── requirements.txt # Python dependencies
-└── .github/
-└── workflows/
-└── ci.yml # GitHub Actions config
-
-yaml
-Copy
-Edit
-
----
-
 ## 📦 Installation & Usage
 
 ### 🧪 Local Development
@@ -95,15 +72,17 @@ flake8 .
 
 # Run all tests
 PYTHONPATH=. pytest
-🐳 Docker Support
+```
+
+### 🐳 Docker Support
 Build and run the app in Docker:
 
-bash
-Copy
-Edit
+```bash
 docker build -t training-fastapi .
 docker run -p 8000:8000 training-fastapi
-🧠 Tips
+```
+
+### 🧠 Tips
 manage.py is the entry point (from manage import app)
 
 Make sure to set PYTHONPATH=. when testing locally
@@ -114,5 +93,7 @@ Coverage checks using pytest-cov
 
 Deployment steps using secrets or DockerHub
 
-📜 License
+### 📜 License
 MIT — free to use, modify, and share.
+
+---
