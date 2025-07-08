@@ -63,15 +63,6 @@ pip install -r requirements.txt
 
 # Run the app
 uvicorn manage:app --reload
-🧪 Run Linting & Tests
-bash
-Copy
-Edit
-# Style check
-flake8 .
-
-# Run all tests
-PYTHONPATH=. pytest
 ```
 
 ### 🐳 Docker Support
