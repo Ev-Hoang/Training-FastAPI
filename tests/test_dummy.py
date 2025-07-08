@@ -4,6 +4,7 @@ from manage import api  # hoặc app nếu bạn gọi là app
 
 client = TestClient(api)
 
+
 def test_get_root():
     response = client.get("/")
     assert response.status_code == 200
