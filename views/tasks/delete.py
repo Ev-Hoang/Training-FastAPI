@@ -7,7 +7,8 @@ from testdb import Task, FakeUser
 
 router = APIRouter()
 
-@router.delete('/{task_id}', response_model = Task)
+
+@router.delete('/{task_id}', response_model=Task)
 def delete_task(task_id: int, user: FakeUser = Depends(get_current_user)):
     """
     Xóa task theo ID cho người dùng hiện tại.
@@ -26,7 +27,9 @@ def delete_task(task_id: int, user: FakeUser = Depends(get_current_user)):
         for index, task in enumerate(user.tasks):
             if task.task_id == task_id:
                 deleted_task = user.tasks.pop(index)
-                return TaskResponse(message="Task deleted successfully", task_id=task_id)
+                return TaskResponse(message="Task deleted successfully",
+                                    data=deleted_task)
         raise HTTPException(404, detail='task not found')
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"task deleted failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"task deleted failed: {str(e)}")

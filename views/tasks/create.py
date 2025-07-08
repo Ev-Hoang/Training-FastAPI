@@ -11,6 +11,7 @@ from testdb import Task, FakeUser
 
 router = APIRouter()
 
+
 @router.post('/upload', response_model=Task)
 async def upload_file(
     task_id: int = Form(...),
@@ -47,10 +48,12 @@ async def upload_file(
             f.write(contents)
 
         task.file_name = file.filename
-        return TaskResponse(message="Task file upload successfully", task_id=task_id)
+        return TaskResponse(message="Task file upload successfully",
+                            task_id=task_id)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Task upload failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Task upload failed: {str(e)}")
 
 
 @router.post('', response_model=TaskResponse)
@@ -70,7 +73,8 @@ def create_task(task: TaskCreate, user: FakeUser = Depends(get_current_user)):
     - Mặc định trạng thái là progress = 0 (Pending).
     """
     try:
-        new_task_id = max(t.task_id for t in user.tasks) + 1 if user.tasks else 1
+        new_task_id = max(t.task_id for t in user.tasks) + \
+            1 if user.tasks else 1
 
         new_task = Task(
             task_id=new_task_id,
@@ -82,12 +86,16 @@ def create_task(task: TaskCreate, user: FakeUser = Depends(get_current_user)):
             task_filename=""
         )
         user.tasks.append(new_task)
-        return TaskResponse(message="Task created successfully", task_id=new_task_id)
+        return TaskResponse(message="Task created successfully",
+                            task_id=new_task_id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
-    
+        raise HTTPException(
+            status_code=500, detail=f"File upload failed: {str(e)}")
+
+
 @router.post("/bulk", response_model=List[Task])
-def create_tasks_bulk(tasks: List[TaskCreate], user: FakeUser = Depends(get_current_user)):
+def create_tasks_bulk(tasks: List[TaskCreate],
+                      user: FakeUser = Depends(get_current_user)):
     """
     Tạo nhiều task mới cùng lúc cho người dùng hiện tại.
 
@@ -107,14 +115,15 @@ def create_tasks_bulk(tasks: List[TaskCreate], user: FakeUser = Depends(get_curr
         new_task_id = max(task.task_id for task in user.tasks) + 1
 
         for i, task in enumerate(tasks):
-            new_task = Task(task_id = new_task_id + i,
-                        task_name = task.task_name,
-                        task_description = task.task_description,
-                        priority = task.priority,
-                        progress= Progress.N,
-                        task_date=datetime.now().replace(microsecond=0))
+            new_task = Task(task_id=new_task_id + i,
+                            task_name=task.task_name,
+                            task_description=task.task_description,
+                            priority=task.priority,
+                            progress=Progress.N,
+                            task_date=datetime.now().replace(microsecond=0))
             user.tasks.append(new_task)
             new_tasks.append(new_task)
         return new_tasks
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Task bulk failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Task bulk failed: {str(e)}")
