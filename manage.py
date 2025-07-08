@@ -8,9 +8,11 @@ api = FastAPI()
 api.middleware("http")(log_requests)
 api.include_router(task_router)
 
+
 @api.get("/")
 def root():
     return {"message": "Hello, world"}
+
 
 if __name__ == "__main__":
     import uvicorn
