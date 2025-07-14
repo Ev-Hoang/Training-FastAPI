@@ -8,7 +8,7 @@ from testdb import Task, FakeUser, user_task_cache
 router = APIRouter()
 
 
-@router.put('/{task_id}', response_model=Task)
+@router.put('/{task_id}', response_model=TaskResponse)
 def update_task(task_id: int, updated_task: TaskUpdate,
                 user: FakeUser = Depends(get_current_user)):
     """
@@ -42,6 +42,7 @@ def update_task(task_id: int, updated_task: TaskUpdate,
 
                 if api_key in user_task_cache:
                     user_task_cache[api_key][task_id] = task
+
                 return TaskResponse(message="Task updated successfully",
                                     task_id=task_id)
         raise HTTPException(404, detail='task not found')

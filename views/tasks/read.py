@@ -9,6 +9,42 @@ from testdb import Task, FakeUser, user_task_cache
 router = APIRouter()
 
 
+@router.get("/completed", response_model=List[Task])
+def get_completed_tasks(user: FakeUser = Depends(get_current_user)):
+    """
+    Lấy danh sách các task đã hoàn thành của người dùng hiện tại.
+
+    Params:
+    - user (FakeUser): Người dùng đã xác thực.
+
+    Returns:
+    - List[Task]: Danh sách task có progress = 1.
+    """
+    try:
+        return [task for task in user.tasks if task.progress == 1]
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Task retrieve failed: {str(e)}")
+
+
+@router.get("/pending", response_model=List[Task])
+def get_pending_tasks(user: FakeUser = Depends(get_current_user)):
+    """
+    Lấy danh sách các task đang chờ (chưa hoàn thành) của người dùng hiện tại.
+
+    Params:
+    - user (FakeUser): Người dùng đã xác thực.
+
+    Returns:
+    - List[Task]: Danh sách task có progress = 0.
+    """
+    try:
+        return [task for task in user.tasks if task.progress == 0]
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Task retrieve failed: {str(e)}")
+
+
 @router.get("/{task_id}", response_model=Task)
 def get_task(task_id: int, user: FakeUser = Depends(get_current_user)):
     """
@@ -62,42 +98,6 @@ def get_tasks(first_n: int = None, user: FakeUser = Depends(get_current_user)):
             return user.tasks[:first_n]
         else:
             return user.tasks
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Task retrieve failed: {str(e)}")
-
-
-@router.get("/completed", response_model=List[Task])
-def get_completed_tasks(user: FakeUser = Depends(get_current_user)):
-    """
-    Lấy danh sách các task đã hoàn thành của người dùng hiện tại.
-
-    Params:
-    - user (FakeUser): Người dùng đã xác thực.
-
-    Returns:
-    - List[Task]: Danh sách task có progress = 1.
-    """
-    try:
-        return [task for task in user.tasks if task.progress == 1]
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Task retrieve failed: {str(e)}")
-
-
-@router.get("/pending", response_model=List[Task])
-def get_pending_tasks(user: FakeUser = Depends(get_current_user)):
-    """
-    Lấy danh sách các task đang chờ (chưa hoàn thành) của người dùng hiện tại.
-
-    Params:
-    - user (FakeUser): Người dùng đã xác thực.
-
-    Returns:
-    - List[Task]: Danh sách task có progress = 0.
-    """
-    try:
-        return [task for task in user.tasks if task.progress == 0]
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Task retrieve failed: {str(e)}")

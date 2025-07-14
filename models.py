@@ -39,11 +39,10 @@ class Task(TaskBase):
 
 
 class TaskUpdate(BaseModel):
-    task_name: Optional[str] = Field(
-        None, min_length=3, max_length=512, description="Name")
-    task_description: Optional[str] = Field(None, description="description")
-    priority: Optional[Priority] = Field(None, description="Priority")
-    progress: Optional[Progress] = Field(None, description="Progress")
+    task_name: Optional[str] = None
+    task_description: Optional[str] = None
+    priority: Optional[int] = None
+    progress: Optional[int] = None
 
 
 class FakeUser(BaseModel):
